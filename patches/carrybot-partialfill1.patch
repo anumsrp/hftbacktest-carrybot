@@ -18,9 +18,9 @@
                  self.state.apply_fill(&order);
              }
              // Applies the received order response to the local orders.
---- a/pyproject.toml
-+++ b/pyproject.toml
-@@ -8,7 +8,7 @@
+--- a/py-hftbacktest/pyproject.toml
++++ b/py-hftbacktest/pyproject.toml
+@@ -10,7 +10,7 @@
  readme = "README.rst"
  authors = [{ name = "nkaz001", email = "nkaz001@protonmail.com" }]
  license = { file = "LICENSE" }
@@ -37,4 +37,16 @@
 -version = "2.4.4"
 +version = "2.4.4+carrybot.partialfill1"
  edition = "2024"
- readme = "README.md"
+ 
+ [lib]
+--- a/py-hftbacktest/hftbacktest/__init__.py
++++ b/py-hftbacktest/hftbacktest/__init__.py
+@@ -114,7 +114,7 @@
+     'Recorder'
+ )
+ 
+-__version__ = '2.4.4'
++__version__ = '2.4.4+carrybot.partialfill1'
+ 
+ 
+ class BacktestAsset(BacktestAsset_):

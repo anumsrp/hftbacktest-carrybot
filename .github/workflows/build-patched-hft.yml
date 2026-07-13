@@ -59,6 +59,12 @@ jobs:
           set -o pipefail
           python -m pip install --upgrade pip
           python -m pip wheel ./upstream-src/py-hftbacktest --no-deps --wheel-dir wheelhouse 2>&1 | tee build.log
+      - name: Upload Python 3.13 wheel
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheel-Linux-py3.13-final
+          path: wheelhouse/*.whl
+          if-no-files-found: error
       - name: Install and verify package identity
         shell: bash
         run: |
@@ -69,12 +75,6 @@ jobs:
         run: |
           set -o pipefail
           python -m pytest -vv tests/test_partial_fill_accounting.py 2>&1 | tee pytest.log
-      - name: Upload Python 3.13 wheel
-        uses: actions/upload-artifact@v4
-        with:
-          name: wheel-Linux-py3.13-final
-          path: wheelhouse/*.whl
-          if-no-files-found: error
       - name: Upload diagnostics
         if: always()
         uses: actions/upload-artifact@v4

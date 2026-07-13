@@ -1,0 +1,40 @@
+--- a/hftbacktest/src/backtest/proc/local.rs
++++ b/hftbacktest/src/backtest/proc/local.rs
+@@ -101,7 +101,7 @@
+ 
+             // Processes receiving order response.
+-            if order.status == Status::Filled {
++            if order.status == Status::Filled || order.status == Status::PartiallyFilled {
+                 self.state.apply_fill(&order);
+             }
+             // Applies the received order response to the local orders.
+--- a/hftbacktest/src/backtest/proc/l3_local.rs
++++ b/hftbacktest/src/backtest/proc/l3_local.rs
+@@ -281,7 +281,7 @@
+ 
+             // Processes receiving order response.
+-            if order.status == Status::Filled {
++            if order.status == Status::Filled || order.status == Status::PartiallyFilled {
+                 self.state.apply_fill(&order);
+             }
+             // Applies the received order response to the local orders.
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -8,7 +8,7 @@
+ readme = "README.rst"
+ authors = [{ name = "nkaz001", email = "nkaz001@protonmail.com" }]
+ license = { file = "LICENSE" }
+-version = "2.4.4"
++version = "2.4.4+carrybot.partialfill1"
+ requires-python = ">=3.11"
+ dependencies = [
+  "numpy >=2.0, <2.3",
+--- a/py-hftbacktest/Cargo.toml
++++ b/py-hftbacktest/Cargo.toml
+@@ -1,6 +1,6 @@
+ [package]
+ name = "py-hftbacktest"
+-version = "2.4.4"
++version = "2.4.4+carrybot.partialfill1"
+ edition = "2024"
+ readme = "README.md"

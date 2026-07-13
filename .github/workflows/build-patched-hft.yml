@@ -27,14 +27,35 @@ jobs:
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: 1.91.1
-      - name: Verify immutable upstream and apply exact patch
+      - name: Verify immutable upstream and apply controlled patch
         shell: bash
         run: |
           test "$(git -C upstream rev-parse HEAD)" = "a244a14250b42d97fc305569c93c4117cd5e1dff"
-          cd upstream
-          git apply --check ../patches/carrybot-partialfill1.patch
-          git apply ../patches/carrybot-partialfill1.patch
-          git diff --check
+          python - <<'PY'
+          from pathlib import Path
+          replacements = {
+              "upstream/hftbacktest/src/backtest/proc/local.rs": (
+                  "if order.status == Status::Filled {",
+                  "if order.status == Status::Filled || order.status == Status::PartiallyFilled {",
+              ),
+              "upstream/hftbacktest/src/backtest/proc/l3_local.rs": (
+                  "if order.status == Status::Filled {",
+                  "if order.status == Status::Filled || order.status == Status::PartiallyFilled {",
+              ),
+              "upstream/pyproject.toml": ('version = "2.4.4"', 'version = "2.4.4+carrybot.partialfill1"'),
+              "upstream/py-hftbacktest/Cargo.toml": ('version = "2.4.4"', 'version = "2.4.4+carrybot.partialfill1"'),
+          }
+          for name, (old, new) in replacements.items():
+              path = Path(name)
+              text = path.read_text(encoding="utf-8")
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{name}: expected exactly one patch target, got {count}")
+              path.write_text(text.replace(old, new), encoding="utf-8")
+          PY
+          git -C upstream diff --check
+          git -C upstream diff -- hftbacktest/src/backtest/proc/local.rs hftbacktest/src/backtest/proc/l3_local.rs pyproject.toml py-hftbacktest/Cargo.toml > applied.patch
+          sha256sum applied.patch
       - name: Build wheel
         shell: bash
         run: |

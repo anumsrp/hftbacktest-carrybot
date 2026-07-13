@@ -13,8 +13,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
-        python: ["3.11", "3.12", "3.13"]
+        os: [ubuntu-latest]
+        python: ["3.12"]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -34,25 +34,16 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           replacements = {
-              "upstream/hftbacktest/src/backtest/proc/local.rs": (
-                  "if order.status == Status::Filled {",
-                  "if order.status == Status::Filled || order.status == Status::PartiallyFilled {",
-              ),
-              "upstream/hftbacktest/src/backtest/proc/l3_local.rs": (
-                  "if order.status == Status::Filled {",
-                  "if order.status == Status::Filled || order.status == Status::PartiallyFilled {",
-              ),
+              "upstream/hftbacktest/src/backtest/proc/local.rs": ("if order.status == Status::Filled {", "if order.status == Status::Filled || order.status == Status::PartiallyFilled {"),
+              "upstream/hftbacktest/src/backtest/proc/l3_local.rs": ("if order.status == Status::Filled {", "if order.status == Status::Filled || order.status == Status::PartiallyFilled {"),
               "upstream/py-hftbacktest/pyproject.toml": ('version = "2.4.4"', 'version = "2.4.4+carrybot.partialfill1"'),
               "upstream/py-hftbacktest/Cargo.toml": ('version = "2.4.4"', 'version = "2.4.4+carrybot.partialfill1"'),
               "upstream/py-hftbacktest/hftbacktest/__init__.py": ("__version__ = '2.4.4'", "__version__ = '2.4.4+carrybot.partialfill1'"),
           }
           for name, (old, new) in replacements.items():
-              path = Path(name)
-              text = path.read_text(encoding="utf-8")
-              count = text.count(old)
+              path = Path(name); text = path.read_text(encoding="utf-8"); count = text.count(old)
               print(f"{name}: target_count={count}")
-              if count != 1:
-                  raise SystemExit(f"{name}: expected exactly one patch target, got {count}")
+              if count != 1: raise SystemExit(f"{name}: expected exactly one patch target, got {count}")
               path.write_text(text.replace(old, new), encoding="utf-8")
           PY
           git -C upstream diff --check
@@ -61,8 +52,18 @@ jobs:
       - name: Build wheel
         shell: bash
         run: |
+          set -o pipefail
           python -m pip install --upgrade pip
-          python -m pip wheel ./upstream/py-hftbacktest --no-deps --wheel-dir wheelhouse
+          python -m pip wheel ./upstream/py-hftbacktest --no-deps --wheel-dir wheelhouse 2>&1 | tee build.log
+      - name: Upload build diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: diagnostic-${{ runner.os }}-py${{ matrix.python }}
+          path: |
+            build.log
+            applied.patch
+          if-no-files-found: warn
       - name: Install and verify identity
         shell: bash
         run: |

@@ -13,7 +13,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: recursive
           fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
@@ -23,20 +22,25 @@ jobs:
           toolchain: 1.94.1
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: upstream -> target
+          workspaces: upstream-src -> target
           key: hftbacktest-linux-py313-a244a142
-      - name: Verify immutable upstream and apply controlled patch
+      - name: Fetch immutable upstream
         shell: bash
         run: |
-          test "$(git -C upstream rev-parse HEAD)" = "a244a14250b42d97fc305569c93c4117cd5e1dff"
+          git clone --filter=blob:none https://github.com/nkaz001/hftbacktest.git upstream-src
+          git -C upstream-src checkout --detach a244a14250b42d97fc305569c93c4117cd5e1dff
+          test "$(git -C upstream-src rev-parse HEAD)" = "a244a14250b42d97fc305569c93c4117cd5e1dff"
+      - name: Apply controlled patch
+        shell: bash
+        run: |
           python - <<'PY'
           from pathlib import Path
           replacements = {
-              "upstream/hftbacktest/src/backtest/proc/local.rs": ("if order.status == Status::Filled {", "if order.status == Status::Filled || order.status == Status::PartiallyFilled {"),
-              "upstream/hftbacktest/src/backtest/proc/l3_local.rs": ("if order.status == Status::Filled {", "if order.status == Status::Filled || order.status == Status::PartiallyFilled {"),
-              "upstream/py-hftbacktest/pyproject.toml": ('version = "2.4.4"', 'version = "2.4.4+carrybot.partialfill1"'),
-              "upstream/py-hftbacktest/Cargo.toml": ('version = "2.4.4"', 'version = "2.4.4+carrybot.partialfill1"'),
-              "upstream/py-hftbacktest/hftbacktest/__init__.py": ("__version__ = '2.4.4'", "__version__ = '2.4.4+carrybot.partialfill1'"),
+              "upstream-src/hftbacktest/src/backtest/proc/local.rs": ("if order.status == Status::Filled {", "if order.status == Status::Filled || order.status == Status::PartiallyFilled {"),
+              "upstream-src/hftbacktest/src/backtest/proc/l3_local.rs": ("if order.status == Status::Filled {", "if order.status == Status::Filled || order.status == Status::PartiallyFilled {"),
+              "upstream-src/py-hftbacktest/pyproject.toml": ('version = "2.4.4"', 'version = "2.4.4+carrybot.partialfill1"'),
+              "upstream-src/py-hftbacktest/Cargo.toml": ('version = "2.4.4"', 'version = "2.4.4+carrybot.partialfill1"'),
+              "upstream-src/py-hftbacktest/hftbacktest/__init__.py": ("__version__ = '2.4.4'", "__version__ = '2.4.4+carrybot.partialfill1'"),
           }
           for name, (old, new) in replacements.items():
               path = Path(name)
@@ -46,15 +50,15 @@ jobs:
                   raise SystemExit(f"{name}: expected exactly one patch target, got {count}")
               path.write_text(text.replace(old, new), encoding="utf-8")
           PY
-          git -C upstream diff --check
-          git -C upstream diff -- hftbacktest/src/backtest/proc/local.rs hftbacktest/src/backtest/proc/l3_local.rs py-hftbacktest/pyproject.toml py-hftbacktest/Cargo.toml py-hftbacktest/hftbacktest/__init__.py > applied.patch
+          git -C upstream-src diff --check
+          git -C upstream-src diff -- hftbacktest/src/backtest/proc/local.rs hftbacktest/src/backtest/proc/l3_local.rs py-hftbacktest/pyproject.toml py-hftbacktest/Cargo.toml py-hftbacktest/hftbacktest/__init__.py > applied.patch
           sha256sum applied.patch
       - name: Build patched native wheel
         shell: bash
         run: |
           set -o pipefail
           python -m pip install --upgrade pip
-          python -m pip wheel ./upstream/py-hftbacktest --no-deps --wheel-dir wheelhouse 2>&1 | tee build.log
+          python -m pip wheel ./upstream-src/py-hftbacktest --no-deps --wheel-dir wheelhouse 2>&1 | tee build.log
       - name: Install and verify package identity
         shell: bash
         run: |

@@ -1,0 +1,1 @@
+Temporary CI-only branch for producing the Linux CPython 3.13 artifact from the immutable upstream commit and the controlled partial-fill patch. Not a replacement for the pinned fork provenance branch.

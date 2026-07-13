@@ -3,6 +3,7 @@ name: build-patched-hftbacktest
 on:
   pull_request:
     branches: [main]
+    paths-ignore: ["dist/**"]
   workflow_dispatch:
 
 permissions:
